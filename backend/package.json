@@ -1,5 +1,5 @@
 {
-  "name": "diecasting-backend",
+  "name": "production-system-backend",
   "version": "1.0.0",
   "description": "API for the diecasting production system.",
   "main": "server.js",

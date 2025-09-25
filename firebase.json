@@ -1,9 +1,15 @@
 {
   "functions": {
-    "source": ".",
+    "source": "backend",
     "runtime": "nodejs18"
   },
   "hosting": {
+    "public": "frontend",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "rewrites": [
       {
         "source": "/api/**",
@@ -12,3 +18,4 @@
     ]
   }
 }
+

@@ -1,34 +1,34 @@
-// 1. --- Import Firebase and Express ---
 const functions = require("firebase-functions");
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
 
-// --- Server Setup ---
+// --- Initialize Express App ---
 const app = express();
 
 // --- Middleware ---
-// Use cors to allow your frontend to call this API
+// Automatically allow cross-origin requests.
+// The { origin: true } setting is a good default for this setup.
 app.use(cors({ origin: true }));
 app.use(express.json());
 
 // --- Database Connection ---
-// Securely get the database credentials from Firebase's runtime configuration
-const dbConfig = functions.config().database;
+// The database connection details are pulled from the secure Firebase runtime configuration
+// that you set with the 'firebase functions:config:set' command.
+const dbConfig = {
+  user: functions.config().database.user,
+  password: functions.config().database.password,
+  database: functions.config().database.name,
+  // Securely connect to Cloud SQL using a Unix socket
+  host: `/cloudsql/${functions.config().database.instance_connection_name}`,
+};
+const pool = new Pool(dbConfig);
 
-const pool = new Pool({
-    user: dbConfig.user,
-    password: dbConfig.password,
-    database: dbConfig.name,
-    // Use a secure Unix socket for the connection in production
-    host: `/cloudsql/${dbConfig.instance_connection_name}`
-});
 
 // --- API Endpoints (Routes) ---
-// (Your GET and POST routes remain exactly the same)
 
 // GET /api/production-logs
-app.get('/production-logs', async (req, res) => {
+app.get('/api/production-logs', async (req, res) => {
     try {
         const { rows } = await pool.query('SELECT * FROM production_logs ORDER BY date DESC, start_time DESC');
         res.status(200).json(rows);
@@ -39,11 +39,19 @@ app.get('/production-logs', async (req, res) => {
 });
 
 // POST /api/production-logs
-app.post('/production-logs', async (req, res) => {
+app.post('/api/production-logs', async (req, res) => {
     try {
         const {
-            operatorName, machineId, dieNumber, shift, date,
-            startTime, endTime, quantityProduced, quantityRejected, notes
+            operatorName,
+            machineId,
+            dieNumber,
+            shift,
+            date,
+            startTime,
+            endTime,
+            quantityProduced,
+            quantityRejected,
+            notes
         } = req.body;
 
         if (!operatorName || !machineId || !date || !startTime || !endTime) {
@@ -64,12 +72,8 @@ app.post('/production-logs', async (req, res) => {
     }
 });
 
-
-// 2. --- Remove the app.listen() section ---
-// We no longer need this because Firebase will manage the server lifecycle.
-
-// 3. --- Export the Express app as a Cloud Function ---
-// This is the "jet engine" part. We name the function 'api'.
-// Firebase will automatically handle all requests starting with /api/ and send them here.
+// --- Expose Express API as a single Cloud Function ---
+// This is the critical line that Firebase looks for.
+// It wraps your entire Express app in a single function named "api".
 exports.api = functions.https.onRequest(app);
 
