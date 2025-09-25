@@ -1,61 +1,49 @@
-// --- Imports ---
-const express = require('express');
-const cors = require('cors');
-const { Pool } = require('pg');
-const functions = require('firebase-functions'); // Import Firebase Functions SDK
+// 1. --- Import Firebase and Express ---
+const functions = require("firebase-functions");
+const express = require("express");
+const cors = require("cors");
+const { Pool } = require("pg");
 
 // --- Server Setup ---
 const app = express();
 
 // --- Middleware ---
-// CORS must be configured to allow requests from your web app's origin.
-// { origin: true } is a secure default for Firebase Functions.
+// Use cors to allow your frontend to call this API
 app.use(cors({ origin: true }));
 app.use(express.json());
-// Explicitly handle OPTIONS requests for all routes (important for CORS preflight)
-app.options('*', cors({ origin: true }));
 
-// --- Database Connection Configuration ---
-// Get secrets securely from Firebase's runtime configuration.
-// This is the standard way to handle sensitive data in Cloud Functions.
-const dbConfig = {
-    user: functions.config().database.user,
-    password: functions.config().database.password,
-    database: functions.config().database.name,
-    // Connect via a secure Unix socket, which is the standard for Cloud Functions
-    host: `/cloudsql/${functions.config().database.instance_connection_name}`,
-};
-const pool = new Pool(dbConfig);
+// --- Database Connection ---
+// Securely get the database credentials from Firebase's runtime configuration
+const dbConfig = functions.config().database;
 
-pool.on('connect', () => {
-    console.log('Successfully connected to the database via Unix socket!');
+const pool = new Pool({
+    user: dbConfig.user,
+    password: dbConfig.password,
+    database: dbConfig.name,
+    // Use a secure Unix socket for the connection in production
+    host: `/cloudsql/${dbConfig.instance_connection_name}`
 });
-
-pool.on('error', (err) => {
-    console.error('Database connection error:', err.stack);
-});
-
 
 // --- API Endpoints (Routes) ---
-// Your existing API logic does not need to change at all.
+// (Your GET and POST routes remain exactly the same)
 
 // GET /api/production-logs
-app.get('/api/production-logs', cors({ origin: true }), async (req, res) => {
+app.get('/production-logs', async (req, res) => {
     try {
         const { rows } = await pool.query('SELECT * FROM production_logs ORDER BY date DESC, start_time DESC');
         res.status(200).json(rows);
-    } catch (error)        {
+    } catch (error) {
         console.error('Error fetching production logs:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 
 // POST /api/production-logs
-app.post('/api/production-logs', cors({ origin: true }), async (req, res) => {
+app.post('/production-logs', async (req, res) => {
     try {
         const {
-            operatorName, machineId, dieNumber, shift, date, startTime, endTime,
-            quantityProduced, quantityRejected, notes
+            operatorName, machineId, dieNumber, shift, date,
+            startTime, endTime, quantityProduced, quantityRejected, notes
         } = req.body;
 
         if (!operatorName || !machineId || !date || !startTime || !endTime) {
@@ -77,9 +65,11 @@ app.post('/api/production-logs', cors({ origin: true }), async (req, res) => {
 });
 
 
-// --- Export the API as a single Cloud Function ---
-// Instead of app.listen(), we export the entire Express app.
-// Firebase will automatically handle starting and stopping the server.
-// The name "api" becomes the name of our function.
+// 2. --- Remove the app.listen() section ---
+// We no longer need this because Firebase will manage the server lifecycle.
+
+// 3. --- Export the Express app as a Cloud Function ---
+// This is the "jet engine" part. We name the function 'api'.
+// Firebase will automatically handle all requests starting with /api/ and send them here.
 exports.api = functions.https.onRequest(app);
 
