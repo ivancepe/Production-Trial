@@ -1,0 +1,5 @@
+ body { font-family: 'Inter', sans-serif; }
+        .form-input { transition: all 0.2s ease-in-out; }
+        .form-input:focus { ring: 2px; }
+        .error-message { display: none; }
+        #notification { transition: opacity 0.3s, transform 0.3s; }

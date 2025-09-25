@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "source": ".",
+    "runtime": "nodejs18"
+  },
+  "hosting": {
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "function": "api"
+      }
+    ]
+  }
+}
